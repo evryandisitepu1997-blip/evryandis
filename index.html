@@ -380,6 +380,92 @@ button:hover:not(:disabled) {
   background: #22c55e;
   box-shadow: 0 0 8px #22c55e;
 }
+
+/* Styling Sistem Pengawasan Anti-Curang */
+.violation-badge {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.warning-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.warning-modal-box {
+  background: #ffffff;
+  color: #1e293b;
+  max-width: 440px;
+  width: 100%;
+  border-radius: 20px;
+  padding: 28px;
+  text-align: center;
+  border-top: 8px solid #dc2626;
+  box-shadow: 0 20px 50px rgba(220, 38, 38, 0.45);
+  animation: shakeModal 0.4s ease-in-out;
+}
+
+@keyframes shakeModal {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.warning-modal-box h2 {
+  color: #dc2626;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.warning-count-pill {
+  display: inline-block;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: bold;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.warning-btn {
+  background: #dc2626;
+  color: white;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.warning-btn:hover {
+  background: #b91c1c;
+}
+
+.violation-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  color: #334155;
+}
 </style>
 </head>
 
@@ -415,7 +501,8 @@ button:hover:not(:disabled) {
         • Angkat <b>3 Jari</b> (Telunjuk, Tengah, Manis) untuk memilih <b>C</b><br>
         • Angkat <b>4 Jari</b> (Empat jari tanpa jempol) untuk memilih <b>D</b><br>
         • Tahan posisi jari selama <b>1,5 detik</b> hingga bilah penuh!<br>
-        • Buka <b>5 Jari (✋)</b> setelah menjawab untuk lanjut ke soal berikutnya.
+        • Buka <b>5 Jari (✋)</b> setelah menjawab untuk lanjut ke soal berikutnya.<br>
+        • <b>⚠️ Pengawasan Aktif:</b> Dilarang berpindah tab/aplikasi selama ujian berlangsung (Maks. 3x peringatan).
       </div>
     </div>
 
@@ -424,6 +511,7 @@ button:hover:not(:disabled) {
 
       <div class="info">
         <span id="nomor">Soal 1/10</span>
+        <span class="violation-badge" id="violationBadge">🛡️ Pelanggaran: 0/3</span>
         <span id="timer">⏱ 20 detik</span>
       </div>
 
@@ -454,7 +542,9 @@ button:hover:not(:disabled) {
 
       <h3 id="predikat" style="margin-bottom: 10px;"></h3>
 
-      <p id="detail" style="color: #475569; margin-bottom: 20px;"></p>
+      <p id="detail" style="color: #475569; margin-bottom: 12px;"></p>
+
+      <div class="violation-summary" id="violationSummary"></div>
 
       <button class="start-btn" onclick="location.reload()">
         🔄 ULANGI KUIS
@@ -495,6 +585,26 @@ button:hover:not(:disabled) {
     </div>
   </div>
 
+</div>
+
+<!-- MODAL PERINGATAN ANTI-CURANG -->
+<div class="warning-modal-overlay" id="warningModal">
+  <div class="warning-modal-box">
+    <div style="font-size: 46px; margin-bottom: 8px;">🚨</div>
+    <h2>PERINGATAN PENGAWASAN!</h2>
+    <p id="warningMessage" style="font-size: 15px; line-height: 1.5; color: #334155;">
+      Anda terdeteksi meninggalkan halaman atau berpindah tab/aplikasi saat ujian berlangsung!
+    </p>
+    <div class="warning-count-pill" id="warningCounterText">
+      Pelanggaran ke-1 dari 3 batas maksimal
+    </div>
+    <p style="font-size: 13px; color: #64748b;">
+      Jika pelanggaran mencapai 3 kali, ujian akan otomatis dihentikan dan dinyatakan didiskualifikasi.
+    </p>
+    <button class="warning-btn" onclick="tutupModalPeringatan()">
+      SAYA MENGERTI & LANJUTKAN UJIAN
+    </button>
+  </div>
 </div>
 
 <script>
@@ -595,6 +705,14 @@ let namaSiswa = "";
 let sudahJawab = false;
 let kuisSelesai = false;
 
+// Variabel Sistem Anti-Curang (Pengawasan Keluar Halaman)
+let kuisBerjalan = false;
+let jumlahPelanggaran = 0;
+const MAX_PELANGGARAN = 3;
+let modalPeringatanTerbuka = false;
+let waktuTerakhirPelanggaran = 0;
+let didiskualifikasi = false;
+
 // Variabel untuk Sensor Tangan & Dwell-Time
 let kameraAktif = false;
 let currentGesture = null; // Nilai: 1, 2, 3, 4 (jawaban), atau 5 (next)
@@ -629,9 +747,112 @@ async function mulai() {
   document.getElementById("cameraPanel").style.display = "flex";
   document.getElementById("mainWrapper").classList.add("active-quiz");
 
+  kuisBerjalan = true;
+  jumlahPelanggaran = 0;
+  didiskualifikasi = false;
+  perbaruiBadgePelanggaran();
+
   tampilkanSoal();
   inisialisasiKameraDanMediaPipe();
 }
+
+/**
+ * Memainkan suara alarm peringatan menggunakan Web Audio API
+ */
+function bunyikanAlarmPeringatan() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(520, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.35);
+
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (e) {
+    console.warn("Web Audio API tidak didukung:", e);
+  }
+}
+
+function perbaruiBadgePelanggaran() {
+  const badge = document.getElementById("violationBadge");
+  if (badge) {
+    badge.innerText = `🛡️ Pelanggaran: ${jumlahPelanggaran}/${MAX_PELANGGARAN}`;
+    if (jumlahPelanggaran > 0) {
+      badge.style.background = "#fee2e2";
+      badge.style.borderColor = "#f87171";
+    }
+  }
+}
+
+/**
+ * Mencatat pelanggaran apabila peserta meninggalkan tab/halaman kuis
+ */
+function catatPelanggaranKeluar(alasan) {
+  if (!kuisBerjalan || kuisSelesai || didiskualifikasi) return;
+
+  // Debounce 1 detik agar event blur & visibilitychange bersamaan tidak dihitung ganda
+  const sekarang = Date.now();
+  if (sekarang - waktuTerakhirPelanggaran < 1000) return;
+  waktuTerakhirPelanggaran = sekarang;
+
+  jumlahPelanggaran++;
+  perbaruiBadgePelanggaran();
+  bunyikanAlarmPeringatan();
+  resetDwellProgress();
+
+  // Jika mencapai batas maksimal (3 kali), langsung hentikan ujian
+  if (jumlahPelanggaran >= MAX_PELANGGARAN) {
+    didiskualifikasi = true;
+    modalPeringatanTerbuka = false;
+    document.getElementById("warningModal").style.display = "none";
+    selesai(true);
+    return;
+  }
+
+  // Tampilkan modal peringatan tegas
+  modalPeringatanTerbuka = true;
+  document.getElementById("warningMessage").innerText =
+    `Terdeteksi aktivitas mencurigakan (${alasan}). Peserta dilarang keluar dari halaman kuis!`;
+  document.getElementById("warningCounterText").innerText =
+    `Pelanggaran ke-${jumlahPelanggaran} dari ${MAX_PELANGGARAN} batas maksimal`;
+  document.getElementById("warningModal").style.display = "flex";
+}
+
+function tutupModalPeringatan() {
+  modalPeringatanTerbuka = false;
+  document.getElementById("warningModal").style.display = "none";
+}
+
+// Listener 1: Deteksi perpindahan tab atau minimize jendela browser
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    catatPelanggaranKeluar("Berpindah tab atau meminimalkan browser");
+  }
+});
+
+// Listener 2: Deteksi kehilangan fokus jendela (misal membuka aplikasi lain / split screen)
+window.addEventListener("blur", () => {
+  catatPelanggaranKeluar("Jendela kuis kehilangan fokus / membuka aplikasi lain");
+});
+
+// Listener 3: Peringatan bawaan browser jika mencoba menutup tab atau refresh halaman saat kuis aktif
+window.addEventListener("beforeunload", (e) => {
+  if (kuisBerjalan && !kuisSelesai) {
+    e.preventDefault();
+    e.returnValue = "Ujian sedang berlangsung! Keluar dari halaman akan dianggap sebagai pelanggaran.";
+    return e.returnValue;
+  }
+});
 
 /**
  * Menginisialisasi webcam dan model MediaPipe Hands
@@ -783,7 +1004,7 @@ function hitungJariTerangkat(landmarks, handedness) {
  * Mengatur mekanisme dwell-time (tahan gestur selama 1,5 detik) sebelum memicu aksi
  */
 function prosesGesturTangan(jumlahJari) {
-  if (kuisSelesai) return;
+  if (kuisSelesai || modalPeringatanTerbuka) return;
 
   const statusBadge = document.getElementById("gestureStatus");
   const now = Date.now();
@@ -982,12 +1203,13 @@ function selanjutnya() {
   if (indeks < soal.length) {
     tampilkanSoal();
   } else {
-    selesai();
+    selesai(false);
   }
 }
 
-function selesai() {
+function selesai(statusDiskualifikasi = false) {
   kuisSelesai = true;
+  kuisBerjalan = false;
   clearInterval(interval);
 
   // Perbarui progress bar menjadi 100% saat kuis selesai
@@ -998,15 +1220,24 @@ function selesai() {
   document.getElementById("mainWrapper").classList.remove("active-quiz");
   document.getElementById("hasil").style.display = "block";
 
-  let nilaiAkhir = Math.round((skor / soal.length) * 100);
+  let nilaiAkhir = statusDiskualifikasi ? 0 : Math.round((skor / soal.length) * 100);
 
-  document.getElementById("ucapan").innerText =
-    "Hebat, " + namaSiswa + "! Kamu sudah menyelesaikan kuis.";
+  if (statusDiskualifikasi) {
+    document.getElementById("ucapan").innerHTML =
+      `<span style="color:#dc2626; font-weight:bold;">⛔ Ujian Dihentikan!</span> Maaf ${namaSiswa}, Anda telah melebihi batas maksimal keluar dari halaman kuis.`;
+    document.getElementById("nilai").style.color = "#dc2626";
+  } else {
+    document.getElementById("ucapan").innerText =
+      "Hebat, " + namaSiswa + "! Kamu sudah menyelesaikan kuis.";
+    document.getElementById("nilai").style.color = "#16a34a";
+  }
 
   document.getElementById("nilai").innerText = nilaiAkhir;
 
   let predikat = "";
-  if (nilaiAkhir >= 90) {
+  if (statusDiskualifikasi) {
+    predikat = "🚫 DIDISKUALIFIKASI (PELANGGARAN)";
+  } else if (nilaiAkhir >= 90) {
     predikat = "🌟 SANGAT BAIK!";
   } else if (nilaiAkhir >= 80) {
     predikat = "👏 BAIK!";
@@ -1019,6 +1250,19 @@ function selesai() {
   document.getElementById("predikat").innerText = predikat;
   document.getElementById("detail").innerText =
     "Jawaban benar: " + skor + " dari " + soal.length + " soal.";
+
+  const violationSummary = document.getElementById("violationSummary");
+  if (jumlahPelanggaran === 0) {
+    violationSummary.style.background = "#f0fdf4";
+    violationSummary.style.borderColor = "#bbf7d0";
+    violationSummary.style.color = "#166534";
+    violationSummary.innerHTML = "✅ <b>Integritas Ujian Terjaga:</b> 0 pelanggaran keluar halaman.";
+  } else {
+    violationSummary.style.background = "#fef2f2";
+    violationSummary.style.borderColor = "#fecaca";
+    violationSummary.style.color = "#991b1b";
+    violationSummary.innerHTML = `⚠️ <b>Catatan Pengawasan:</b> Terdeteksi <b>${jumlahPelanggaran} kali</b> keluar dari halaman kuis.`;
+  }
 }
 </script>
 
