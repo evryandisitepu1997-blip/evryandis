@@ -3,9 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kuis Informatika Kelas X</title>
+<title>Kuis Informatika Kelas X - Sensor Gerakan Tangan</title>
+
+<!-- Memuat Library MediaPipe Hands dan Camera Utils dari CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
 <style>
+/* Perbaikan bug selektor CSS universal (*) */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -13,8 +19,8 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg,#101044,#174b82);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #101044, #174b82);
   min-height: 100vh;
   color: white;
   display: flex;
@@ -23,29 +29,155 @@ body {
   padding: 20px;
 }
 
+.main-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1020px;
+  align-items: center;
+}
+
+@media (min-width: 880px) {
+  .main-wrapper.active-quiz {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+}
+
 .container {
   background: white;
   color: #222;
   width: 100%;
-  max-width: 650px;
+  max-width: 620px;
   padding: 30px;
   border-radius: 22px;
-  box-shadow: 0 15px 40px #0005;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Panel Kamera & Sensor Gestur */
+.camera-panel {
+  background: rgba(255, 255, 255, 0.96);
+  color: #222;
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  border-radius: 22px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+}
+
+.camera-panel h3 {
+  color: #174bba;
+  font-size: 17px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #111827;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 3px solid #2456dc;
+}
+
+/* Membalik tampilan kamera secara horizontal (efek cermin) agar natural */
+#input_video {
+  display: none;
+}
+
+#output_canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.gesture-badge {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  text-align: center;
+  font-weight: bold;
+  color: #1e40af;
+  font-size: 15px;
+}
+
+.guide-list {
+  margin-top: 14px;
+  width: 100%;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.guide-list p {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.guide-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.guide-item:last-child {
+  border-bottom: none;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 22px;
 }
 
 .header h1 {
   color: #174bba;
-  font-size: 28px;
-  margin-bottom: 10px;
+  font-size: 26px;
+  margin-bottom: 8px;
 }
 
 .header p {
   color: #666;
+  font-size: 14px;
+}
+
+.alert-box {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  display: none;
+}
+
+.camera-notice {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  margin-top: 15px;
+  line-height: 1.5;
 }
 
 input {
@@ -53,53 +185,56 @@ input {
   padding: 14px;
   border: 2px solid #ddd;
   border-radius: 10px;
-  margin: 20px 0 10px 0;
+  margin: 16px 0;
   font-size: 16px;
+  transition: border-color 0.2s;
 }
 
-.error-msg {
-  color: #dc2626;
-  font-size: 14px;
-  margin-bottom: 15px;
-  display: none;
-  font-weight: bold;
+input:focus {
+  outline: none;
+  border-color: #2456dc;
 }
 
 button {
   border: none;
   cursor: pointer;
   padding: 14px 20px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: bold;
-  transition: 0.3s;
+  transition: 0.25s;
 }
 
-button:hover {
-  transform: scale(1.03);
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 
 .start-btn, .next-btn {
   background: #2456dc;
   color: white;
   width: 100%;
-  margin-top: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.start-btn:hover, .next-btn:hover {
+  background: #1d4ed8;
 }
 
 .info {
   display: flex;
   justify-content: space-between;
-  margin: 18px 0;
+  margin: 15px 0;
   font-weight: bold;
   color: #2456dc;
 }
 
 .progress {
-  background: #ddd;
-  height: 9px;
+  background: #e2e8f0;
+  height: 10px;
   border-radius: 20px;
   overflow: hidden;
-  margin-bottom: 25px;
+  margin-bottom: 22px;
 }
 
 .progress-bar {
@@ -110,19 +245,63 @@ button:hover {
 }
 
 .question {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: bold;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   line-height: 1.5;
+  color: #1e293b;
 }
 
+/* Styling Opsi Jawaban + Progress Dwell Time */
 .option {
+  position: relative;
   width: 100%;
   text-align: left;
-  background: #f0f3fa;
+  background: #f1f5f9;
   margin-bottom: 12px;
-  color: #222;
+  color: #1e293b;
   border: 2px solid transparent;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1;
+}
+
+.option-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(36, 86, 220, 0.22);
+  z-index: -1;
+  transition: width 0.08s linear;
+}
+
+.next-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 0;
+  transition: width 0.08s linear;
+}
+
+.option.gesturing {
+  border-color: #2456dc;
+  box-shadow: 0 4px 12px rgba(36, 86, 220, 0.18);
+}
+
+.finger-hint {
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #475569;
+  font-weight: 600;
 }
 
 .option:hover:not(:disabled) {
@@ -131,13 +310,15 @@ button:hover {
 }
 
 .option.correct {
-  background: #d5f8e5;
-  border-color: #16a34a;
+  background: #d5f8e5 !important;
+  border-color: #16a34a !important;
+  color: #14532d;
 }
 
 .option.wrong {
-  background: #ffe0e0;
-  border-color: #dc2626;
+  background: #ffe0e0 !important;
+  border-color: #dc2626 !important;
+  color: #7f1d1d;
 }
 
 .option:disabled {
@@ -148,9 +329,10 @@ button:hover {
 .feedback {
   margin: 15px 0;
   padding: 15px;
-  border-radius: 10px;
+  border-radius: 12px;
   display: none;
   line-height: 1.5;
+  font-size: 15px;
 }
 
 .next-btn {
@@ -165,23 +347,19 @@ button:hover {
 
 .result h2 {
   color: #2456dc;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .score {
-  font-size: 55px;
+  font-size: 56px;
   color: #16a34a;
   font-weight: bold;
-  margin: 20px;
-}
-
-.hidden {
-  display: none;
+  margin: 18px 0;
 }
 
 .footer {
   text-align: center;
-  margin-top: 25px;
+  margin-top: 24px;
   color: #777;
   font-size: 12px;
 }
@@ -190,315 +368,137 @@ button:hover {
   display: none;
 }
 
-/* Gaya fitur Kamera WebRTC & Proctoring */
-.camera-box {
-  background: #f4f7fc;
-  border: 2px dashed #cbd5e1;
-  border-radius: 14px;
-  padding: 16px;
-  margin: 15px 0;
-  text-align: center;
-}
-
-.camera-preview-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 280px;
-  height: 210px;
-  margin: 0 auto 12px auto;
-  background: #0f172a;
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.camera-preview-wrapper video,
-.camera-preview-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-}
-
-.camera-controls {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.cam-btn {
-  padding: 10px 14px;
-  font-size: 13px;
-  border-radius: 8px;
-  background: #174b82;
-  color: white;
-}
-
-.cam-btn.capture {
-  background: #16a34a;
-}
-
-.cam-btn.retake {
-  background: #ea580c;
-}
-
-.cam-status {
-  font-size: 12px;
-  margin-top: 8px;
-  color: #475569;
-  line-height: 1.4;
-}
-
-/* Mini Proctoring Webcam saat Kuis */
-.proctor-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin-bottom: 14px;
-  gap: 10px;
-}
-
-.proctor-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.proctor-video-box {
-  width: 72px;
-  height: 54px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #0f172a;
-  border: 2px solid #2456dc;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 10px;
-}
-
-.proctor-video-box video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-}
-
-.proctor-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #1e293b;
-}
-
-.dot-live {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #16a34a;
+.status-dot {
   display: inline-block;
-  animation: pulseLive 1.4s infinite;
-}
-
-.dot-off {
-  background: #dc2626;
-  animation: none;
-}
-
-@keyframes pulseLive {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.proctor-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.mini-btn {
-  padding: 6px 10px;
-  font-size: 11px;
-  border-radius: 6px;
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-/* Foto & Kartu Hasil */
-.result-card-box {
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
-  border: 2px solid #c7d2fe;
-  border-radius: 16px;
-  padding: 20px;
-  margin: 15px 0;
-}
-
-.result-avatar {
-  width: 110px;
-  height: 110px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid #2456dc;
-  margin: 0 auto 12px auto;
-  display: block;
-  background: #e2e8f0;
+  background: #ef4444;
 }
 
-.download-btn {
-  background: #16a34a;
-  color: white;
-  width: 100%;
-  margin-top: 10px;
+.status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="main-wrapper" id="mainWrapper">
 
-  <div class="header">
-    <h1>💻 KUIS INFORMATIKA</h1>
-    <p>Petualangan Digital Siswa Kelas X</p>
-    <p>Belajar • Berpikir • Berprestasi</p>
-  </div>
+  <!-- KONTENER UTAMA KUIS -->
+  <div class="container">
 
-  <div id="start">
-    <h2>Selamat Datang! 👋</h2>
-    <p>Siap menguji kemampuan Informatika kamu?</p>
-
-    <input type="text" id="nama"
-    placeholder="Masukkan nama lengkap kamu"
-    oninput="document.getElementById('error-nama').style.display='none'">
-
-    <div id="error-nama" class="error-msg">
-      ⚠️ Silakan masukkan nama terlebih dahulu!
+    <div class="header">
+      <h1>💻 KUIS INFORMATIKA</h1>
+      <p>Petualangan Digital Siswa Kelas X • Mode Sensor Tangan</p>
     </div>
 
-    <!-- Bagian Kamera Foto Profil Peserta -->
-    <div class="camera-box">
-      <div class="camera-preview-wrapper" id="start-cam-wrapper">
-        <span id="cam-placeholder">📷 Kamera belum aktif<br>(Opsional untuk foto profil & pengawasan)</span>
-        <video id="video-start" autoplay playsinline muted style="display:none;"></video>
-        <img id="foto-preview" alt="Foto Profil Peserta" style="display:none; transform:none;">
-      </div>
+    <!-- HALAMAN AWAL -->
+    <div id="start">
+      <h2>Selamat Datang! 👋</h2>
+      <p style="margin-top: 6px; color: #475569;">Jawab soal menggunakan gerakan jari di depan kamera atau klik langsung.</p>
 
-      <div class="camera-controls">
-        <button type="button" class="cam-btn" id="btn-aktifkan-cam" onclick="aktifkanKamera()">
-          📷 Aktifkan Kamera
-        </button>
-        <button type="button" class="cam-btn capture" id="btn-ambil-foto" onclick="ambilFotoProfil()" style="display:none;">
-          📸 Ambil Foto Profil
-        </button>
-        <button type="button" class="cam-btn retake" id="btn-ulang-foto" onclick="ulangiFoto()" style="display:none;">
-          🔄 Foto Ulang
-        </button>
-      </div>
+      <div id="startAlert" class="alert-box"></div>
 
-      <div class="cam-status" id="cam-status">
-        Aktifkan kamera untuk mengambil foto profil peserta ujian, atau langsung mulai kuis jika perangkat tidak memiliki kamera.
+      <input type="text" id="nama" placeholder="Masukkan nama lengkap kamu...">
+
+      <button class="start-btn" id="btnMulai" onclick="mulai()">
+        📷 IZINKAN KAMERA & MULAI KUIS
+      </button>
+
+      <div class="camera-notice">
+        <b>🖐️ Cara Bermain dengan Sensor Tangan:</b><br>
+        • Angkat <b>1 Jari</b> (Telunjuk) untuk memilih <b>A</b><br>
+        • Angkat <b>2 Jari</b> (Telunjuk & Tengah) untuk memilih <b>B</b><br>
+        • Angkat <b>3 Jari</b> (Telunjuk, Tengah, Manis) untuk memilih <b>C</b><br>
+        • Angkat <b>4 Jari</b> (Empat jari tanpa jempol) untuk memilih <b>D</b><br>
+        • Tahan posisi jari selama <b>1,5 detik</b> hingga bilah penuh!<br>
+        • Buka <b>5 Jari (✋)</b> setelah menjawab untuk lanjut ke soal berikutnya.
       </div>
     </div>
 
-    <button class="start-btn" onclick="mulai()">
-      🚀 MULAI KUIS
-    </button>
-  </div>
+    <!-- HALAMAN KUIS -->
+    <div id="quiz">
 
-  <div id="quiz">
-
-    <!-- Bar Kamera Pengawas (Proctoring) -->
-    <div class="proctor-bar">
-      <div class="proctor-left">
-        <div class="proctor-video-box" id="proctor-video-box">
-          <video id="video-quiz" autoplay playsinline muted style="display:none;"></video>
-          <span id="proctor-off-text">OFF</span>
-        </div>
-        <div>
-          <div class="proctor-badge">
-            <span class="dot-live dot-off" id="proctor-dot"></span>
-            <span id="proctor-status-text">Kamera Nonaktif</span>
-          </div>
-          <div style="font-size:11px; color:#64748b; margin-top:2px;" id="proctor-subtext">
-            Mode tanpa kamera
-          </div>
-        </div>
+      <div class="info">
+        <span id="nomor">Soal 1/10</span>
+        <span id="timer">⏱ 20 detik</span>
       </div>
-      <div class="proctor-actions">
-        <button type="button" class="mini-btn" id="btn-toggle-view" onclick="toggleTampilanKamera()">
-          Sembunyikan
-        </button>
-        <button type="button" class="mini-btn" id="btn-toggle-power" onclick="toggleDayaKamera()">
-          Hidupkan
-        </button>
+
+      <div class="progress">
+        <div class="progress-bar" id="progress"></div>
       </div>
+
+      <div class="question" id="pertanyaan"></div>
+
+      <div id="pilihan"></div>
+
+      <div class="feedback" id="feedback"></div>
+
+      <button class="next-btn" id="next" onclick="selanjutnya()">
+        <div class="next-fill" id="nextFill"></div>
+        <span style="position: relative; z-index: 1;" id="nextText">SOAL BERIKUTNYA (✋ 5 Jari / Klik) ➜</span>
+      </button>
+
     </div>
 
-    <div class="info">
-      <span id="nomor">Soal 1/10</span>
-      <span id="timer">⏱ 20 detik</span>
-    </div>
+    <!-- HALAMAN HASIL -->
+    <div class="result" id="hasil">
+      <h2>🏆 KUIS SELESAI!</h2>
 
-    <div class="progress">
-      <div class="progress-bar" id="progress"></div>
-    </div>
+      <p id="ucapan"></p>
 
-    <div class="question" id="pertanyaan"></div>
-
-    <div id="pilihan"></div>
-
-    <div class="feedback" id="feedback"></div>
-
-    <button class="next-btn" id="next"
-    onclick="selanjutnya()">
-      SOAL BERIKUTNYA ➜
-    </button>
-
-  </div>
-
-  <div class="result" id="hasil">
-    <h2>🏆 KUIS SELESAI!</h2>
-
-    <div class="result-card-box">
-      <img id="hasil-foto" class="result-avatar" alt="Foto Peserta">
-      <p id="ucapan" style="font-weight:bold; color:#1e293b;"></p>
       <div class="score" id="nilai"></div>
-      <h3 id="predikat"></h3>
-      <p id="detail" style="margin: 12px 0 0 0; color:#475569;"></p>
+
+      <h3 id="predikat" style="margin-bottom: 10px;"></h3>
+
+      <p id="detail" style="color: #475569; margin-bottom: 20px;"></p>
+
+      <button class="start-btn" onclick="location.reload()">
+        🔄 ULANGI KUIS
+      </button>
     </div>
 
-    <button class="download-btn" onclick="unduhKartuHasil()">
-      💾 UNDUH KARTU HASIL KUIS
-    </button>
+    <div class="footer">
+      © 2026 | Kuis Informatika Kelas X • AI Hand Gesture Recognition
+      <br>
+      Semangat Belajar dan Raih Prestasi!
+    </div>
 
-    <button class="start-btn"
-    onclick="ulangiKuis()">
-      🔄 ULANGI KUIS
-    </button>
   </div>
 
-  <div class="footer">
-    © 2026 | Kuis Informatika Kelas X
-    <br>
-    Semangat Belajar dan Raih Prestasi!
+  <!-- PANEL KAMERA & DETEKSI GESTUR TANGAN -->
+  <div class="camera-panel" id="cameraPanel">
+    <h3>
+      <span class="status-dot" id="camDot"></span>
+      Sensor Kamera Tangan
+    </h3>
+
+    <div class="video-wrapper">
+      <video id="input_video" playsinline></video>
+      <canvas id="output_canvas" width="480" height="360"></canvas>
+    </div>
+
+    <div class="gesture-badge" id="gestureStatus">
+      ⏳ Menyiapkan kamera & AI...
+    </div>
+
+    <div class="guide-list">
+      <p>Panduan Gestur Jari (Tahan 1,5 dtk):</p>
+      <div class="guide-item"><span>☝️ 1 Jari (Telunjuk)</span> <b>Opsi A</b></div>
+      <div class="guide-item"><span>✌️ 2 Jari</span> <b>Opsi B</b></div>
+      <div class="guide-item"><span>🤟 3 Jari</span> <b>Opsi C</b></div>
+      <div class="guide-item"><span>🖖 4 Jari</span> <b>Opsi D</b></div>
+      <div class="guide-item"><span>✋ 5 Jari Terbuka</span> <b>Soal Berikutnya</b></div>
+    </div>
   </div>
 
 </div>
 
 <script>
-// Daftar pertanyaan dan pembahasan Kuis Informatika Kelas X
+// Data 10 Soal Informatika Kelas X
 const soal = [
   {
     q: "Apa kepanjangan dari CPU?",
@@ -593,223 +593,296 @@ let waktu = 20;
 let interval;
 let namaSiswa = "";
 let sudahJawab = false;
+let kuisSelesai = false;
 
-// Variabel state kamera WebRTC
-let mediaStream = null;
-let fotoProfilDataUrl = "";
+// Variabel untuk Sensor Tangan & Dwell-Time
 let kameraAktif = false;
-let pratinjauTerlihat = true;
+let currentGesture = null; // Nilai: 1, 2, 3, 4 (jawaban), atau 5 (next)
+let gestureStartTime = 0;
+const DWELL_DURATION = 1500; // 1.5 detik menahan gestur untuk konfirmasi
 
-// Membuat avatar inisial fallback jika siswa tidak mengambil foto
-function buatAvatarFallback(nama) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 240;
-  canvas.height = 240;
-  const ctx = canvas.getContext("2d");
+const ikonJari = ["☝️ 1 Jari", "✌️ 2 Jari", "🤟 3 Jari", "🖖 4 Jari"];
 
-  const grad = ctx.createLinearGradient(0, 0, 240, 240);
-  grad.addColorStop(0, "#101044");
-  grad.addColorStop(1, "#2456dc");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 240, 240);
-
-  const inisial = (nama || "S").trim().charAt(0).toUpperCase();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 100px Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(inisial, 120, 125);
-
-  return canvas.toDataURL("image/png");
+function tampilkanPesanError(pesan) {
+  const alertBox = document.getElementById("startAlert");
+  alertBox.innerText = pesan;
+  alertBox.style.display = "block";
 }
 
-// Mengaktifkan kamera WebRTC melalui navigator.mediaDevices.getUserMedia
-async function aktifkanKamera() {
-  const statusEl = document.getElementById("cam-status");
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    statusEl.style.color = "#dc2626";
-    statusEl.innerText = "⚠️ Browser Anda tidak mendukung akses kamera. Anda tetap dapat melanjutkan kuis.";
-    return;
-  }
-
-  try {
-    statusEl.style.color = "#475569";
-    statusEl.innerText = "Meminta izin akses kamera...";
-
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false
-    });
-
-    kameraAktif = true;
-    const videoStart = document.getElementById("video-start");
-    videoStart.srcObject = mediaStream;
-    videoStart.style.display = "block";
-
-    document.getElementById("cam-placeholder").style.display = "none";
-    document.getElementById("foto-preview").style.display = "none";
-    document.getElementById("btn-aktifkan-cam").style.display = "none";
-    document.getElementById("btn-ambil-foto").style.display = "inline-block";
-    document.getElementById("btn-ulang-foto").style.display = "none";
-
-    statusEl.style.color = "#16a34a";
-    statusEl.innerText = "✅ Kamera aktif! Silakan klik 'Ambil Foto Profil' sebelum memulai kuis.";
-  } catch (err) {
-    kameraAktif = false;
-    statusEl.style.color = "#dc2626";
-    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-      statusEl.innerText = "⚠️ Izin kamera ditolak oleh pengguna. Anda tetap bisa lanjut mengerjakan kuis tanpa kamera.";
-    } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-      statusEl.innerText = "⚠️ Perangkat kamera tidak ditemukan. Anda tetap bisa lanjut mengerjakan kuis tanpa kamera.";
-    } else {
-      statusEl.innerText = "⚠️ Kamera sedang digunakan aplikasi lain atau tidak tersedia. Anda tetap dapat melanjutkan kuis.";
-    }
-  }
-}
-
-// Mengambil snapshot foto profil dari feed video
-function ambilFotoProfil() {
-  const videoStart = document.getElementById("video-start");
-  if (!videoStart || !mediaStream) return;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = videoStart.videoWidth || 480;
-  canvas.height = videoStart.videoHeight || 360;
-  const ctx = canvas.getContext("2d");
-
-  // Balik horizontal agar hasil foto natural (tidak terbalik cermin)
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(videoStart, 0, 0, canvas.width, canvas.height);
-
-  fotoProfilDataUrl = canvas.toDataURL("image/png");
-
-  const imgPreview = document.getElementById("foto-preview");
-  imgPreview.src = fotoProfilDataUrl;
-  imgPreview.style.display = "block";
-  videoStart.style.display = "none";
-
-  document.getElementById("btn-ambil-foto").style.display = "none";
-  document.getElementById("btn-ulang-foto").style.display = "inline-block";
-
-  const statusEl = document.getElementById("cam-status");
-  statusEl.style.color = "#16a34a";
-  statusEl.innerText = "✅ Foto profil berhasil diambil! Klik 'MULAI KUIS' untuk memulai.";
-}
-
-// Mengulangi pengambilan foto profil
-function ulangiFoto() {
-  fotoProfilDataUrl = "";
-  const videoStart = document.getElementById("video-start");
-  const imgPreview = document.getElementById("foto-preview");
-
-  imgPreview.style.display = "none";
-  if (mediaStream && kameraAktif) {
-    videoStart.style.display = "block";
-    document.getElementById("btn-ambil-foto").style.display = "inline-block";
-    document.getElementById("btn-ulang-foto").style.display = "none";
-    document.getElementById("cam-status").innerText = "Silakan posisikan wajah Anda lalu klik 'Ambil Foto Profil'.";
-  } else {
-    aktifkanKamera();
-  }
-}
-
-// Memperbarui tampilan widget kamera pengawas saat kuis berlangsung
-function sinkronkanKameraKuis() {
-  const videoQuiz = document.getElementById("video-quiz");
-  const offText = document.getElementById("proctor-off-text");
-  const dot = document.getElementById("proctor-dot");
-  const statusText = document.getElementById("proctor-status-text");
-  const subText = document.getElementById("proctor-subtext");
-  const btnPower = document.getElementById("btn-toggle-power");
-
-  if (kameraAktif && mediaStream) {
-    videoQuiz.srcObject = mediaStream;
-    videoQuiz.style.display = pratinjauTerlihat ? "block" : "none";
-    offText.style.display = pratinjauTerlihat ? "none" : "inline";
-    offText.innerText = "HIDDEN";
-    dot.classList.remove("dot-off");
-    statusText.innerText = "Kamera Aktif • Pengawasan Ujian";
-    subText.innerText = "Identitas peserta terpantau";
-    btnPower.innerText = "Matikan";
-  } else {
-    videoQuiz.srcObject = null;
-    videoQuiz.style.display = "none";
-    offText.style.display = "inline";
-    offText.innerText = "OFF";
-    dot.classList.add("dot-off");
-    statusText.innerText = "Kamera Nonaktif";
-    subText.innerText = "Pengawasan kamera dimatikan";
-    btnPower.innerText = "Hidupkan";
-  }
-}
-
-// Menyembunyikan / menampilkan pratinjau video mini saat kuis
-function toggleTampilanKamera() {
-  pratinjauTerlihat = !pratinjauTerlihat;
-  document.getElementById("btn-toggle-view").innerText = pratinjauTerlihat ? "Sembunyikan" : "Tampilkan";
-  sinkronkanKameraKuis();
-}
-
-// Menghidupkan / mematikan stream kamera saat kuis
-async function toggleDayaKamera() {
-  if (kameraAktif && mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop());
-    mediaStream = null;
-    kameraAktif = false;
-    sinkronkanKameraKuis();
-  } else {
-    try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false
-      });
-      kameraAktif = true;
-      sinkronkanKameraKuis();
-    } catch (err) {
-      document.getElementById("proctor-subtext").innerText = "Izin kamera ditolak / tidak tersedia";
-    }
-  }
-}
-
-// Memulai kuis setelah validasi nama siswa
-function mulai() {
+async function mulai() {
   namaSiswa = document.getElementById("nama").value.trim();
 
   if (namaSiswa === "") {
-    document.getElementById("error-nama").style.display = "block";
+    tampilkanPesanError("⚠️ Silakan masukkan nama lengkap kamu terlebih dahulu!");
     document.getElementById("nama").focus();
     return;
   }
 
-  // Ambil foto otomatis jika kamera aktif tetapi siswa belum sempat menekan Ambil Foto
-  if (kameraAktif && mediaStream && !fotoProfilDataUrl) {
-    ambilFotoProfil();
-  }
+  document.getElementById("startAlert").style.display = "none";
+  const btnMulai = document.getElementById("btnMulai");
+  btnMulai.disabled = true;
+  btnMulai.innerText = "⏳ Mengaktifkan Kamera & Sensor...";
 
+  // Tampilkan layout kuis dan panel kamera
   document.getElementById("start").style.display = "none";
   document.getElementById("quiz").style.display = "block";
+  document.getElementById("cameraPanel").style.display = "flex";
+  document.getElementById("mainWrapper").classList.add("active-quiz");
 
-  sinkronkanKameraKuis();
   tampilkanSoal();
+  inisialisasiKameraDanMediaPipe();
 }
 
-// Menampilkan soal beserta opsi jawaban
+/**
+ * Menginisialisasi webcam dan model MediaPipe Hands
+ */
+async function inisialisasiKameraDanMediaPipe() {
+  const videoElement = document.getElementById("input_video");
+  const canvasElement = document.getElementById("output_canvas");
+  const canvasCtx = canvasElement.getContext("2d");
+  const statusBadge = document.getElementById("gestureStatus");
+  const camDot = document.getElementById("camDot");
+
+  try {
+    // Minta izin akses webcam terlebih dahulu untuk mengecek ketersediaan perangkat
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 480, height: 360, facingMode: "user" }
+    });
+    // Hentikan stream sementara karena Camera Utils dari MediaPipe akan mengelolanya
+    stream.getTracks().forEach(track => track.stop());
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.65
+    });
+
+    hands.onResults((results) => {
+      // Bersihkan canvas dan gambar frame video
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+        const handedness = results.multiHandedness && results.multiHandedness[0]
+          ? results.multiHandedness[0].label
+          : "Right";
+
+        // Gambar kerangka tulang tangan (skeleton) pada canvas
+        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+          color: "#00FF88",
+          lineWidth: 3
+        });
+        drawLandmarks(canvasCtx, landmarks, {
+          color: "#FF3366",
+          lineWidth: 1,
+          radius: 4
+        });
+
+        // Hitung jumlah jari yang terangkat
+        const jumlahJari = hitungJariTerangkat(landmarks, handedness);
+        prosesGesturTangan(jumlahJari);
+      } else {
+        resetDwellProgress();
+        if (!kuisSelesai) {
+          statusBadge.innerText = "🖐️ Arahkan tangan ke kamera...";
+          statusBadge.style.background = "#eff6ff";
+          statusBadge.style.color = "#1e40af";
+        }
+      }
+      canvasCtx.restore();
+    });
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        if (!kuisSelesai) {
+          await hands.send({ image: videoElement });
+        }
+      },
+      width: 480,
+      height: 360
+    });
+
+    await camera.start();
+    kameraAktif = true;
+    camDot.classList.add("active");
+    statusBadge.innerText = "✅ Kamera Aktif! Tunjukkan jarimu";
+
+  } catch (err) {
+    console.warn("Kamera tidak dapat diakses atau ditolak:", err);
+    kameraAktif = false;
+    statusBadge.innerHTML = "⚠️ Kamera tidak aktif/ditolak.<br><small>Gunakan klik tombol jawaban.</small>";
+    statusBadge.style.background = "#fef3c7";
+    statusBadge.style.color = "#92400e";
+
+    // Tampilkan pesan informatif di canvas
+    canvasCtx.fillStyle = "#1e293b";
+    canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.save();
+    // Balik teks agar tidak ter-mirror oleh CSS scaleX(-1)
+    canvasCtx.scale(-1, 1);
+    canvasCtx.fillStyle = "#f8fafc";
+    canvasCtx.font = "bold 18px sans-serif";
+    canvasCtx.textAlign = "center";
+    canvasCtx.fillText("Kamera Tidak Tersedia", -canvasElement.width / 2, 170);
+    canvasCtx.font = "14px sans-serif";
+    canvasCtx.fillStyle = "#94a3b8";
+    canvasCtx.fillText("Silakan klik pilihan secara manual", -canvasElement.width / 2, 200);
+    canvasCtx.restore();
+  }
+}
+
+/**
+ * Menghitung jari yang diangkat berdasarkan koordinat landmark MediaPipe Hands
+ */
+function hitungJariTerangkat(landmarks, handedness) {
+  let jari = 0;
+
+  // 1. Cek Jempol (Thumb): Bandingkan ujung jempol (4) dengan sendi IP (3) pada sumbu X
+  // Karena gambar input belum di-mirror saat diproses MediaPipe, logika kiri/kanan disesuaikan
+  const isRightHand = handedness === "Right";
+  if (isRightHand) {
+    if (landmarks[4].x < landmarks[3].x) jari++;
+  } else {
+    if (landmarks[4].x > landmarks[3].x) jari++;
+  }
+
+  // 2. Cek 4 Jari Lainnya (Telunjuk=8, Tengah=12, Manis=16, Kelingking=20)
+  // Jari dianggap terangkat jika ujung jari (tip) lebih tinggi (nilai Y lebih kecil) dari sendi tengah (PIP)
+  const tipIds = [8, 12, 16, 20];
+  const pipIds = [6, 10, 14, 18];
+
+  let empatJariTerangkat = 0;
+  for (let i = 0; i < 4; i++) {
+    if (landmarks[tipIds[i]].y < landmarks[pipIds[i]].y) {
+      empatJariTerangkat++;
+    }
+  }
+
+  // Jika pengguna mengangkat 1-4 jari tanpa jempol (misal telunjuk saja, telunjuk+tengah, dst.)
+  // Prioritaskan hitungan 4 jari utama agar lebih akurat saat jempol agak terbuka
+  if (empatJariTerangkat >= 1 && empatJariTerangkat <= 4 && jari === 0) {
+    return empatJariTerangkat;
+  }
+
+  // Jika semua 5 jari terbuka lebar (termasuk jempol) -> gestur Lanjut (5)
+  if (empatJariTerangkat === 4 && jari === 1) {
+    return 5;
+  }
+
+  return empatJariTerangkat + jari;
+}
+
+/**
+ * Mengatur mekanisme dwell-time (tahan gestur selama 1,5 detik) sebelum memicu aksi
+ */
+function prosesGesturTangan(jumlahJari) {
+  if (kuisSelesai) return;
+
+  const statusBadge = document.getElementById("gestureStatus");
+  const now = Date.now();
+
+  // Fase 1: Siswa belum menjawab soal -> deteksi jari 1 sampai 4 (Opsi A - D)
+  if (!sudahJawab) {
+    if (jumlahJari >= 1 && jumlahJari <= 4) {
+      const hurufOpsi = String.fromCharCode(64 + jumlahJari); // 1->A, 2->B, 3->C, 4->D
+      statusBadge.innerText = `🎯 Terdeteksi ${jumlahJari} Jari → Opsi ${hurufOpsi}`;
+      statusBadge.style.background = "#dcfce7";
+      statusBadge.style.color = "#166534";
+
+      if (currentGesture !== jumlahJari) {
+        resetDwellProgress();
+        currentGesture = jumlahJari;
+        gestureStartTime = now;
+      }
+
+      const elapsed = now - gestureStartTime;
+      const progress = Math.min((elapsed / DWELL_DURATION) * 100, 100);
+
+      // Update visual progress pada tombol opsi yang ditunjuk
+      const optionButtons = document.querySelectorAll(".option");
+      const targetBtn = optionButtons[jumlahJari - 1];
+      if (targetBtn) {
+        targetBtn.classList.add("gesturing");
+        const fillBar = targetBtn.querySelector(".option-fill");
+        if (fillBar) fillBar.style.width = progress + "%";
+      }
+
+      // Jika sudah ditahan selama 1,5 detik, kunci jawaban
+      if (elapsed >= DWELL_DURATION) {
+        resetDwellProgress();
+        jawab(jumlahJari - 1, targetBtn);
+      }
+    } else {
+      resetDwellProgress();
+      statusBadge.innerText = `🖐️ Angkat 1 - 4 jari untuk menjawab`;
+      statusBadge.style.background = "#eff6ff";
+      statusBadge.style.color = "#1e40af";
+    }
+  }
+  // Fase 2: Siswa sudah menjawab -> deteksi 5 jari terbuka (✋) untuk soal berikutnya
+  else {
+    if (jumlahJari === 5) {
+      statusBadge.innerText = `✋ 5 Jari Terdeteksi → Lanjut Soal...`;
+      statusBadge.style.background = "#fef3c7";
+      statusBadge.style.color = "#92400e";
+
+      if (currentGesture !== 5) {
+        resetDwellProgress();
+        currentGesture = 5;
+        gestureStartTime = now;
+      }
+
+      const elapsed = now - gestureStartTime;
+      const progress = Math.min((elapsed / DWELL_DURATION) * 100, 100);
+      const nextFill = document.getElementById("nextFill");
+      if (nextFill) nextFill.style.width = progress + "%";
+
+      if (elapsed >= DWELL_DURATION) {
+        resetDwellProgress();
+        selanjutnya();
+      }
+    } else {
+      resetDwellProgress();
+      statusBadge.innerText = `✋ Buka 5 jari untuk soal berikutnya`;
+      statusBadge.style.background = "#eff6ff";
+      statusBadge.style.color = "#1e40af";
+    }
+  }
+}
+
+function resetDwellProgress() {
+  currentGesture = null;
+  gestureStartTime = 0;
+
+  document.querySelectorAll(".option").forEach((btn) => {
+    btn.classList.remove("gesturing");
+    const fill = btn.querySelector(".option-fill");
+    if (fill) fill.style.width = "0%";
+  });
+
+  const nextFill = document.getElementById("nextFill");
+  if (nextFill) nextFill.style.width = "0%";
+}
+
 function tampilkanSoal() {
   sudahJawab = false;
   waktu = 20;
+  resetDwellProgress();
 
   clearInterval(interval);
 
   let s = soal[indeks];
 
-  document.getElementById("nomor").innerText =
-    "Soal " + (indeks + 1) + "/" + soal.length;
-
+  document.getElementById("nomor").innerText = "Soal " + (indeks + 1) + "/" + soal.length;
   document.getElementById("pertanyaan").innerText = s.q;
-
-  document.getElementById("progress").style.width =
-    ((indeks / soal.length) * 100) + "%";
+  document.getElementById("progress").style.width = ((indeks / soal.length) * 100) + "%";
 
   let pilihan = document.getElementById("pilihan");
   pilihan.innerHTML = "";
@@ -817,19 +890,24 @@ function tampilkanSoal() {
   s.a.forEach((jawaban, i) => {
     let btn = document.createElement("button");
     btn.className = "option";
-    btn.innerText = String.fromCharCode(65 + i) + ". " + jawaban;
+
+    // Tambahkan elemen progress fill untuk efek dwell-time gestur tangan
+    btn.innerHTML = `
+      <div class="option-fill"></div>
+      <span><b>${String.fromCharCode(65 + i)}.</b> ${jawaban}</span>
+      <span class="finger-hint">${ikonJari[i]}</span>
+    `;
+
     btn.onclick = () => jawab(i, btn);
     pilihan.appendChild(btn);
   });
 
   document.getElementById("feedback").style.display = "none";
   document.getElementById("next").style.display = "none";
-  document.getElementById("next").innerText = "SOAL BERIKUTNYA ➜";
 
   hitungMundur();
 }
 
-// Timer mundur 20 detik per soal
 function hitungMundur() {
   document.getElementById("timer").innerText = "⏱ " + waktu + " detik";
 
@@ -846,23 +924,23 @@ function hitungMundur() {
   }, 1000);
 }
 
-// Memproses jawaban pengguna atau saat waktu habis
 function jawab(pilihan, tombol) {
   if (sudahJawab) return;
 
   sudahJawab = true;
+  resetDwellProgress();
   clearInterval(interval);
 
   let s = soal[indeks];
   let tombolSemua = document.querySelectorAll(".option");
 
-  tombolSemua.forEach(btn => {
+  tombolSemua.forEach((btn) => {
     btn.disabled = true;
   });
 
   if (pilihan === s.b) {
     skor++;
-    tombol.classList.add("correct");
+    if (tombol) tombol.classList.add("correct");
   } else {
     if (tombol) {
       tombol.classList.add("wrong");
@@ -875,23 +953,29 @@ function jawab(pilihan, tombol) {
 
   if (pilihan === s.b) {
     feedback.style.background = "#d5f8e5";
+    feedback.style.color = "#14532d";
     feedback.innerHTML = "✅ <b>Benar!</b> " + s.e;
   } else if (pilihan === -1) {
     feedback.style.background = "#fff0ce";
+    feedback.style.color = "#78350f";
     feedback.innerHTML = "⏰ <b>Waktu habis!</b> " + s.e;
   } else {
     feedback.style.background = "#ffe0e0";
+    feedback.style.color = "#7f1d1d";
     feedback.innerHTML = "❌ <b>Belum tepat.</b> " + s.e;
   }
 
-  document.getElementById("next").style.display = "block";
+  const nextBtn = document.getElementById("next");
+  const nextText = document.getElementById("nextText");
+  nextBtn.style.display = "block";
 
   if (indeks === soal.length - 1) {
-    document.getElementById("next").innerText = "LIHAT HASIL 🏆";
+    nextText.innerText = "LIHAT HASIL (✋ 5 Jari / Klik) 🏆";
+  } else {
+    nextText.innerText = "SOAL BERIKUTNYA (✋ 5 Jari / Klik) ➜";
   }
 }
 
-// Berpindah ke soal selanjutnya atau menyelesaikan kuis
 function selanjutnya() {
   indeks++;
 
@@ -902,24 +986,19 @@ function selanjutnya() {
   }
 }
 
-// Menampilkan layar hasil akhir dan predikat
 function selesai() {
+  kuisSelesai = true;
   clearInterval(interval);
 
-  // Hentikan stream kamera setelah ujian selesai agar hemat baterai/privasi
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop());
-    mediaStream = null;
-    kameraAktif = false;
-  }
+  // Perbarui progress bar menjadi 100% saat kuis selesai
+  document.getElementById("progress").style.width = "100%";
 
   document.getElementById("quiz").style.display = "none";
+  document.getElementById("cameraPanel").style.display = "none";
+  document.getElementById("mainWrapper").classList.remove("active-quiz");
   document.getElementById("hasil").style.display = "block";
 
   let nilaiAkhir = Math.round((skor / soal.length) * 100);
-
-  const fotoFinal = fotoProfilDataUrl || buatAvatarFallback(namaSiswa);
-  document.getElementById("hasil-foto").src = fotoFinal;
 
   document.getElementById("ucapan").innerText =
     "Hebat, " + namaSiswa + "! Kamu sudah menyelesaikan kuis.";
@@ -927,7 +1006,6 @@ function selesai() {
   document.getElementById("nilai").innerText = nilaiAkhir;
 
   let predikat = "";
-
   if (nilaiAkhir >= 90) {
     predikat = "🌟 SANGAT BAIK!";
   } else if (nilaiAkhir >= 80) {
@@ -939,121 +1017,8 @@ function selesai() {
   }
 
   document.getElementById("predikat").innerText = predikat;
-
   document.getElementById("detail").innerText =
     "Jawaban benar: " + skor + " dari " + soal.length + " soal.";
-}
-
-// Mengunduh kartu hasil kuis lengkap dengan foto profil, nama, skor, dan predikat sebagai gambar PNG
-function unduhKartuHasil() {
-  const nilaiAkhir = Math.round((skor / soal.length) * 100);
-  const predikatText = document.getElementById("predikat").innerText;
-  const fotoSrc = fotoProfilDataUrl || buatAvatarFallback(namaSiswa);
-
-  const img = new Image();
-  img.onload = function () {
-    const canvas = document.createElement("canvas");
-    canvas.width = 700;
-    canvas.height = 460;
-    const ctx = canvas.getContext("2d");
-
-    // Latar belakang gradien biru tema aplikasi
-    const bgGrad = ctx.createLinearGradient(0, 0, 700, 460);
-    bgGrad.addColorStop(0, "#101044");
-    bgGrad.addColorStop(1, "#174b82");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 700, 460);
-
-    // Kartu putih di tengah
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.roundRect(30, 30, 640, 400, 20);
-    ctx.fill();
-
-    // Header kartu
-    ctx.fillStyle = "#174bba";
-    ctx.font = "bold 24px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("KARTU HASIL KUIS INFORMATIKA KELAS X", 350, 75);
-
-    ctx.fillStyle = "#64748b";
-    ctx.font = "14px Arial, sans-serif";
-    ctx.fillText("Petualangan Digital Siswa Kelas X • Belajar • Berpikir • Berprestasi", 350, 100);
-
-    // Foto profil bulat
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(165, 235, 75, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(img, 90, 160, 150, 150);
-    ctx.restore();
-
-    ctx.strokeStyle = "#2456dc";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(165, 235, 75, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Informasi peserta & nilai
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#475569";
-    ctx.font = "15px Arial, sans-serif";
-    ctx.fillText("Nama Peserta:", 280, 175);
-
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 22px Arial, sans-serif";
-    ctx.fillText(namaSiswa, 280, 203);
-
-    ctx.fillStyle = "#475569";
-    ctx.font = "15px Arial, sans-serif";
-    ctx.fillText("Nilai Akhir:", 280, 240);
-
-    ctx.fillStyle = "#16a34a";
-    ctx.font = "bold 46px Arial, sans-serif";
-    ctx.fillText(nilaiAkhir + " / 100", 280, 288);
-
-    ctx.fillStyle = "#2456dc";
-    ctx.font = "bold 18px Arial, sans-serif";
-    ctx.fillText(predikatText, 280, 322);
-
-    ctx.fillStyle = "#475569";
-    ctx.font = "14px Arial, sans-serif";
-    ctx.fillText("Benar " + skor + " dari " + soal.length + " soal", 280, 348);
-
-    // Footer kartu
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px Arial, sans-serif";
-    ctx.fillText("© 2026 Kuis Informatika Kelas X", 350, 405);
-
-    const link = document.createElement("a");
-    link.download = "Hasil_Kuis_Informatika_" + namaSiswa.replace(/\s+/g, "_") + ".png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  };
-  img.src = fotoSrc;
-}
-
-// Mengulang kuis dari awal tanpa reload penuh
-function ulangiKuis() {
-  indeks = 0;
-  skor = 0;
-  fotoProfilDataUrl = "";
-  pratinjauTerlihat = true;
-
-  document.getElementById("video-start").style.display = "none";
-  document.getElementById("foto-preview").style.display = "none";
-  document.getElementById("cam-placeholder").style.display = "block";
-  document.getElementById("btn-aktifkan-cam").style.display = "inline-block";
-  document.getElementById("btn-ambil-foto").style.display = "none";
-  document.getElementById("btn-ulang-foto").style.display = "none";
-  document.getElementById("cam-status").style.color = "#475569";
-  document.getElementById("cam-status").innerText =
-    "Aktifkan kamera untuk mengambil foto profil peserta ujian, atau langsung mulai kuis jika perangkat tidak memiliki kamera.";
-
-  document.getElementById("hasil").style.display = "none";
-  document.getElementById("start").style.display = "block";
 }
 </script>
 
