@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuis Informatika - Kontrol Kamera (Gestur Jari)</title>
+
+<!-- Pustaka MediaPipe Hands dari CDN -->
+<script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+<script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  body {
+    background: linear-gradient(135deg, #0f172a, #1e3a8a);
+    color: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .container {
+    background: #1e293b;
+    width: 100%;
+    max-width: 960px;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 1px solid #334155;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 15px;
+  }
+
+  .header h1 {
+    color: #38bdf8;
+    font-size: 26px;
+  }
+
+  .header p {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* Layar Awal */
+  .start-box {
+    max-width: 450px;
+    margin: 20px auto;
+    text-align: center;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: white;
+    font-size: 16px;
+    margin: 15px 0;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .btn:hover {
+    background: #0284c7;
+    color: white;
+  }
+
+  /* Layout Kuis + Kamera */
+  .quiz-layout {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .quiz-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Panel Soal */
+  .info-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-weight: bold;
+    color: #38bdf8;
+  }
+
+  .question {
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 18px;
+    background: #0f172a;
+    padding: 16px;
+    border-radius: 12px;
+    border-left: 4px solid #38bdf8;
+  }
+
+  .option {
+    width: 100%;
+    text-align: left;
+    padding: 13px 16px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: 2px solid #334155;
+    background: #0f172a;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .option.hover-gesture {
+    border-color: #fbbf24;
+    background: #1e293b;
+  }
+
+  .option.correct {
+    background: rgba(34, 197, 94, 0.25);
+    border-color: #22c55e;
+    color: #86efac;
+  }
+
+  .option.wrong {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #fca5a5;
+  }
+
+  .feedback {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    display: none;
+  }
+
+  /* Panel Kamera */
+  .camera-panel {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 14px;
+    border: 1px solid #334155;
+    text-align: center;
+  }
+
+  .video-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 4/3;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Efek cermin */
+  }
+
+  .gesture-status {
+    margin-top: 12px;
+    padding: 10px;
+    background: #1e293b;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .hold-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: #334155;
+    border-radius: 10px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .hold-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #fbbf24;
+    transition: width 0.1s linear;
+  }
+
+  .guide {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #94a3b8;
+    text-align: left;
+    line-height: 1.6;
+  }
+
+  .result-box {
+    text-align: center;
+    padding: 20px;
+    display: none;
+  }
+
+  .score-big {
+    font-size: 64px;
+    font-weight: bold;
+    color: #22c55e;
+    margin: 15px 0;
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📷 KUIS INFORMATIKA INTERAKTIF</h1>
+    <p>Jawab Pertanyaan Menggunakan Gestur Jari di Depan Kamera (Atau Klik Manual)</p>
+  </div>
+
+  <!-- Layar Awal -->
+  <div id="start-screen" class="start-box">
+    <h2>Selamat Datang! 👋</h2>
+    <p style="color:#94a3b8; margin-top:8px;">Izinkan akses kamera saat diminta agar dapat menjawab menggunakan gestur jari.</p>
+    <input type="text" id="nama-siswa" placeholder="Masukkan nama lengkap kamu...">
+    <button class="btn" onclick="mulaiKuis()">🚀 AKTIFKAN KAMERA & MULAI</button>
+  </div>
+
+  <!-- Layar Kuis -->
+  <div id="quiz-screen" class="hidden">
+    <div class="quiz-layout">
+      <!-- Kolom Kiri: Soal -->
+      <div>
+        <div class="info-bar">
+          <span id="nomor-soal">Soal 1 / 5</span>
+          <span id="timer">⏱ 30 detik</span>
+        </div>
+
+        <div class="question" id="teks-soal">Memuat soal...</div>
+        <div id="opsi-container"></div>
+        <div class="feedback" id="feedback"></div>
+        <button class="btn hidden" id="btn-next" onclick="soalBerikutnya()" style="margin-top:12px;">SOAL BERIKUTNYA ➜</button>
+      </div>
+
+      <!-- Kolom Kanan: Kamera AI -->
+      <div class="camera-panel">
+        <div class="video-wrapper">
+          <video id="webcam" autoplay playsinline></video>
+        </div>
+        <div class="gesture-status">
+          <div id="status-jari">⏳ Menunggu kamera aktif...</div>
+          <div class="hold-bar-bg">
+            <div class="hold-bar-fill" id="hold-progress"></div>
+          </div>
+        </div>
+        <div class="guide">
+          <strong>Panduan Gestur Tangan:</strong><br>
+          ☝️ <b>1 Jari</b> = Pilih A &nbsp;|&nbsp; ✌️ <b>2 Jari</b> = Pilih B<br>
+          🤟 <b>3 Jari</b> = Pilih C &nbsp;|&nbsp; 🖖 <b>4 Jari</b> = Pilih D<br>
+          <i>*Tahan posisi jari selama 1,5 detik untuk mengunci jawaban.</i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Layar Hasil -->
+  <div id="result-screen" class="result-box">
+    <h2>🏆 KUIS SELESAI!</h2>
+    <p id="ucapan-akhir" style="color:#94a3b8; margin-top:8px;"></p>
+    <div class="score-big" id="skor-akhir">0</div>
+    <p id="detail-akhir" style="margin-bottom:20px;"></p>
+    <button class="btn" onclick="location.reload()" style="max-width:300px;">🔄 ULANGI KUIS</button>
+  </div>
+</div>
+
+<script>
+const daftarSoal = [
+  {
+    q: "1. Apa kepanjangan dari CPU pada sistem komputer?",
+    a: ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Control Processing User"],
+    b: 0,
+    e: "CPU adalah Central Processing Unit, otak pemroses utama pada komputer."
+  },
+  {
+    q: "2. Tahap memecah masalah besar menjadi bagian-bagian kecil dalam berpikir komputasional disebut...",
+    a: ["Abstraksi", "Dekomposisi", "Algoritma", "Pengenalan Pola"],
+    b: 1,
+    e: "Dekomposisi adalah pemecahan masalah kompleks menjadi sub-masalah kecil."
+  },
+  {
+    q: "3. Manakah perangkat keras yang berfungsi sebagai alat keluaran (output)?",
+    a: ["Keyboard", "Mouse", "Scanner", "Monitor"],
+    b: 3,
+    e: "Monitor menampilkan hasil pemrosesan komputer secara visual."
+  },
+  {
+    q: "4. Sistem bilangan biner dalam komputer hanya terdiri dari angka...",
+    a: ["1 dan 2", "0 sampai 9", "0 dan 1", "A sampai F"],
+    b: 2,
+    e: "Bilangan biner menggunakan basis 2, yaitu digit 0 dan 1."
+  },
+  {
+    q: "5. Jaringan komputer lokal dalam satu gedung sekolah disebut...",
+    a: ["WAN", "MAN", "LAN", "Internet"],
+    b: 2,
+    e: "LAN (Local Area Network) mencakup area lokal terbatas seperti sekolah."
+  }
+];
+
+let indeks = 0;
+let skor = 0;
+let waktu = 30;
+let intervalTimer;
+let sudahJawab = false;
+let namaSiswa = "";
+
+// Variabel deteksi tahan gestur
+let jariTerdeteksiSebelumnya = 0;
+let waktuMulaiTahan = 0;
+const DURASI_TAHAN_MS = 1500; // 1,5 detik menahan jari
+
+function mulaiKuis() {
+  namaSiswa = document.getElementById("nama-siswa").value.trim();
+  if (!namaSiswa) {
+    alert("Silakan masukkan nama kamu terlebih dahulu!");
+    return;
+  }
+
+  document.getElementById("start-screen").classList.add("hidden");
+  document.getElementById("quiz-screen").classList.remove("hidden");
+
+  inisialisasiKamera();
+  tampilkanSoal();
+}
+
+function tampilkanSoal() {
+  sudahJawab = false;
+  waktu = 30;
+  jariTerdeteksiSebelumnya = 0;
+  waktuMulaiTahan = 0;
+  document.getElementById("hold-progress").style.width = "0%";
+  clearInterval(intervalTimer);
+
+  const s = daftarSoal[indeks];
+  document.getElementById("nomor-soal").innerText = `Soal ${indeks + 1} / ${daftarSoal.length}`;
+  document.getElementById("teks-soal").innerText = s.q;
+
+  const container = document.getElementById("opsi-container");
+  container.innerHTML = "";
+
+  s.a.forEach((teks, i) => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.id = `opt-${i}`;
+    btn.innerText = `${String.fromCharCode(65 + i)}. ${teks}`;
+    btn.onclick = () => kunciJawaban(i);
+    container.appendChild(btn);
+  });
+
+  document.getElementById("feedback").style.display = "none";
+  document.getElementById("btn-next").classList.add("hidden");
+
+  jalankanTimer();
+}
+
+function jalankanTimer() {
+  document.getElementById("timer").innerText = `⏱ ${waktu} detik`;
+  intervalTimer = setInterval(() => {
+    waktu--;
+    document.getElementById("timer").innerText = `⏱ ${waktu} detik`;
+    if (waktu <= 0) {
+      clearInterval(intervalTimer);
+      if (!sudahJawab) kunciJawaban(-1);
+    }
+  }, 1000);
+}
+
